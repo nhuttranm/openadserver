@@ -101,7 +101,7 @@ logs/
 *.sqlite3
 
 # Models
-/models/
+# /models/ - see specific rules below
 *.pt
 *.pth
 *.onnx
@@ -120,9 +120,18 @@ secrets/
 credentials/
 
 # Data files
-data/
 
 # Documentation (except README)
 docs/*.md
 scripts/criteo/README*.md
 
+
+# Model files (keep folder structure with .gitkeep)
+/models/criteo/*.pt
+/models/criteo/*.pkl
+/models/criteo/*.json
+/models/criteo/checkpoints/*.pt
+
+# Data files (keep folder structure with .gitkeep)
+/data/criteo/*.parquet
+/data/criteo/*.csv
