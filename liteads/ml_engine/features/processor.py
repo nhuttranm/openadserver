@@ -478,14 +478,20 @@ class FeaturePipeline:
     Manages multiple feature processors and provides unified interface.
     """
 
-    def __init__(self, config_path: str | Path | None = None):
+    def __init__(self, config: "FeaturesConfigSchema | str | Path | None" = None):
         """
         Initialize pipeline.
 
         Args:
-            config_path: Path to features_config.yaml
+            config: FeaturesConfigSchema object or path to features_config.yaml
         """
-        self.config = get_feature_config(config_path)
+        # Accept either a config object or a path
+        if config is None or isinstance(config, (str, Path)):
+            self.config = get_feature_config(config)
+        else:
+            # Already a FeaturesConfigSchema object
+            self.config = config
+
         self.processors: dict[str, BaseFeatureProcessor] = {}
         self.is_fitted = False
 
@@ -518,14 +524,18 @@ class FeaturePipeline:
 
         logger.info(f"Built {len(self.processors)} feature processors")
 
-    def fit(self, data: pd.DataFrame) -> "FeaturePipeline":
+    def fit(self, data: pd.DataFrame | list[dict]) -> "FeaturePipeline":
         """
         Fit all processors on training data.
 
         Args:
-            data: Training DataFrame with all feature columns
+            data: Training DataFrame or list of dicts with all feature columns
         """
         logger.info("Fitting feature pipeline...")
+
+        # Convert list of dicts to DataFrame
+        if isinstance(data, list):
+            data = pd.DataFrame(data)
 
         for name, processor in self.processors.items():
             if name not in data.columns:
@@ -547,18 +557,22 @@ class FeaturePipeline:
         logger.info("Feature pipeline fitted")
         return self
 
-    def transform(self, data: pd.DataFrame) -> dict[str, np.ndarray]:
+    def transform(self, data: pd.DataFrame | list[dict]) -> dict[str, np.ndarray]:
         """
         Transform data using fitted processors.
 
         Args:
-            data: DataFrame to transform
+            data: DataFrame or list of dicts to transform
 
         Returns:
             Dictionary of feature name -> transformed values
         """
         if not self.is_fitted:
             raise RuntimeError("Pipeline not fitted")
+
+        # Convert list of dicts to DataFrame
+        if isinstance(data, list):
+            data = pd.DataFrame(data)
 
         result = {}
 
@@ -652,3 +666,15 @@ class FeaturePipeline:
 
         logger.info(f"Pipeline loaded from {path}")
         return pipeline
+
+    def get_state(self) -> dict:
+        """Get pipeline state for serialization."""
+        return {
+            "processors": self.processors,
+            "is_fitted": self.is_fitted,
+        }
+
+    def set_state(self, state: dict) -> None:
+        """Set pipeline state from serialization."""
+        self.processors = state["processors"]
+        self.is_fitted = state["is_fitted"]

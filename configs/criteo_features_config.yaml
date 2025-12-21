@@ -1,0 +1,259 @@
+# Criteo Click Logs Feature Configuration
+# Criteo 点击日志数据集特征配置
+#
+# 数据集结构:
+# - Label: 点击标签 (0/1)
+# - I1-I13: 13个整数特征（连续数值特征）
+# - C1-C26: 26个类别特征（离散特征，已哈希）
+#
+# 特征分配策略:
+# - 用户特征: C1-C9 (类别), I1-I4 (数值)
+# - 广告特征: C10-C18 (类别), I5-I9 (数值)
+# - 上下文特征: C19-C26 (类别), I10-I13 (数值)
+
+feature_groups:
+
+  # ============================================================================
+  # 用户特征 (User Features) - 模拟用户画像
+  # ============================================================================
+  user:
+    discrete_features:
+      - name: C1
+        type: discrete
+        description: "用户类别特征1"
+
+      - name: C2
+        type: discrete
+        description: "用户类别特征2"
+
+      - name: C3
+        type: discrete
+        description: "用户类别特征3"
+
+      - name: C4
+        type: discrete
+        description: "用户类别特征4"
+
+      - name: C5
+        type: discrete
+        description: "用户类别特征5"
+
+      - name: C6
+        type: discrete
+        description: "用户类别特征6"
+
+      - name: C7
+        type: discrete
+        description: "用户类别特征7"
+
+      - name: C8
+        type: discrete
+        description: "用户类别特征8"
+
+      - name: C9
+        type: discrete
+        description: "用户类别特征9"
+
+    continuous_features:
+      - name: I1
+        type: continuous
+        transform: log1p
+        description: "用户数值特征1"
+
+      - name: I2
+        type: continuous
+        transform: log1p
+        description: "用户数值特征2"
+
+      - name: I3
+        type: continuous
+        transform: log1p
+        description: "用户数值特征3"
+
+      - name: I4
+        type: continuous
+        transform: log1p
+        description: "用户数值特征4"
+
+  # ============================================================================
+  # 广告特征 (Ad Features) - 模拟广告属性
+  # ============================================================================
+  ad:
+    discrete_features:
+      - name: C10
+        type: discrete
+        description: "广告类别特征1"
+
+      - name: C11
+        type: discrete
+        description: "广告类别特征2"
+
+      - name: C12
+        type: discrete
+        description: "广告类别特征3"
+
+      - name: C13
+        type: discrete
+        description: "广告类别特征4"
+
+      - name: C14
+        type: discrete
+        description: "广告类别特征5"
+
+      - name: C15
+        type: discrete
+        description: "广告类别特征6"
+
+      - name: C16
+        type: discrete
+        description: "广告类别特征7"
+
+      - name: C17
+        type: discrete
+        description: "广告类别特征8"
+
+      - name: C18
+        type: discrete
+        description: "广告类别特征9"
+
+    continuous_features:
+      - name: I5
+        type: continuous
+        transform: log1p
+        description: "广告数值特征1"
+
+      - name: I6
+        type: continuous
+        transform: log1p
+        description: "广告数值特征2"
+
+      - name: I7
+        type: continuous
+        transform: log1p
+        description: "广告数值特征3"
+
+      - name: I8
+        type: continuous
+        transform: log1p
+        description: "广告数值特征4"
+
+      - name: I9
+        type: continuous
+        transform: log1p
+        description: "广告数值特征5"
+
+  # ============================================================================
+  # 上下文特征 (Context Features) - 模拟请求上下文
+  # ============================================================================
+  context:
+    discrete_features:
+      - name: C19
+        type: discrete
+        description: "上下文类别特征1"
+
+      - name: C20
+        type: discrete
+        description: "上下文类别特征2"
+
+      - name: C21
+        type: discrete
+        description: "上下文类别特征3"
+
+      - name: C22
+        type: discrete
+        description: "上下文类别特征4"
+
+      - name: C23
+        type: discrete
+        description: "上下文类别特征5"
+
+      - name: C24
+        type: discrete
+        description: "上下文类别特征6"
+
+      - name: C25
+        type: discrete
+        description: "上下文类别特征7"
+
+      - name: C26
+        type: discrete
+        description: "上下文类别特征8"
+
+    continuous_features:
+      - name: I10
+        type: continuous
+        transform: log1p
+        description: "上下文数值特征1"
+
+      - name: I11
+        type: continuous
+        transform: log1p
+        description: "上下文数值特征2"
+
+      - name: I12
+        type: continuous
+        transform: log1p
+        description: "上下文数值特征3"
+
+      - name: I13
+        type: continuous
+        transform: log1p
+        description: "上下文数值特征4"
+
+  # ============================================================================
+  # 交叉特征 (Cross Features)
+  # ============================================================================
+  cross:
+    - name: user_ad_cross_1
+      type: cross
+      fields: [C1, C10]
+      hash_buckets: 100000
+      embedding_dim: 8
+      description: "用户-广告交叉特征1"
+
+    - name: user_ad_cross_2
+      type: cross
+      fields: [C2, C11]
+      hash_buckets: 100000
+      embedding_dim: 8
+      description: "用户-广告交叉特征2"
+
+    - name: user_context_cross
+      type: cross
+      fields: [C1, C19]
+      hash_buckets: 50000
+      embedding_dim: 8
+      description: "用户-上下文交叉特征"
+
+    - name: ad_context_cross
+      type: cross
+      fields: [C10, C19]
+      hash_buckets: 50000
+      embedding_dim: 8
+      description: "广告-上下文交叉特征"
+
+# ==============================================================================
+# 模型配置
+# ==============================================================================
+model:
+  # Embedding维度
+  default_embedding_dim: 16
+
+  # FM参数
+  fm_k: 8  # FM因子维度
+
+  # DNN参数
+  dnn_hidden_units: [256, 128, 64]
+  dnn_dropout: 0.2
+  dnn_activation: relu
+
+  # 正则化
+  l2_reg_embedding: 0.0001
+  l2_reg_dnn: 0.0001
+
+# ==============================================================================
+# 特征统计信息 (训练时动态更新)
+# ==============================================================================
+feature_stats:
+  # 会在fit阶段自动填充
+  vocab_sizes: {}

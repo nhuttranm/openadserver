@@ -124,12 +124,14 @@ class ModelPredictor:
             if self.model_path and self.model_path.exists():
                 checkpoint = torch.load(self.model_path, map_location=self.device)
 
-                # Get model config
-                if self.feature_builder._is_fitted:
-                    model_config = self.feature_builder.get_model_config()
-                else:
-                    # Use config from checkpoint if available
-                    model_config = checkpoint.get("model_config", {})
+                # Always prefer config from checkpoint to ensure consistency
+                model_config = checkpoint.get("model_config", {})
+                if not model_config and self.feature_builder._is_fitted:
+                    # Fallback to feature builder config
+                    try:
+                        model_config = self.feature_builder.get_model_config()
+                    except Exception:
+                        model_config = {}
 
                 # Detect model type from checkpoint
                 self.model_type = checkpoint.get("model_type", "deepfm")
@@ -141,7 +143,7 @@ class ModelPredictor:
                         dense_feature_dim=model_config.get("dense_feature_dim", 0),
                         l2_reg=model_config.get("l2_reg_embedding", 0.0001),
                     )
-                elif self.model_type == "fm_lr":
+                elif self.model_type in ("fm_lr", "fm"):
                     self.model = FactorizationMachineLR(
                         sparse_feature_dims=model_config.get("sparse_feature_dims", []),
                         dense_feature_dim=model_config.get("dense_feature_dim", 0),
@@ -157,7 +159,7 @@ class ModelPredictor:
                         sequence_embedding_dims=model_config.get("sequence_embedding_dims", {}),
                         fm_k=model_config.get("fm_k", 8),
                         dnn_hidden_units=model_config.get("dnn_hidden_units", [256, 128, 64]),
-                        dnn_dropout=0.0,  # No dropout during inference
+                        dnn_dropout=model_config.get("dnn_dropout", 0.0),  # Match training config
                     )
 
                 # Load weights

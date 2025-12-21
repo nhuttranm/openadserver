@@ -101,7 +101,7 @@ logs/
 *.sqlite3
 
 # Models
-models/
+/models/
 *.pt
 *.pth
 *.onnx
@@ -118,3 +118,11 @@ Thumbs.db
 *.key
 secrets/
 credentials/
+
+# Data files
+data/
+
+# Documentation (except README)
+docs/*.md
+scripts/criteo/README*.md
+

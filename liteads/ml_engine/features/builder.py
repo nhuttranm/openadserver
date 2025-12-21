@@ -364,10 +364,15 @@ class FeatureBuilder:
         with open(path, "rb") as f:
             state = pickle.load(f)
 
-        self._init_pipeline()
-
-        if self.pipeline and state["pipeline_state"]:
+        # Create a minimal pipeline and set its state directly
+        # This avoids loading the wrong config file
+        if state["pipeline_state"]:
+            from liteads.ml_engine.features.processor import FeaturePipeline
+            self.pipeline = FeaturePipeline.__new__(FeaturePipeline)
+            self.pipeline.config = None
             self.pipeline.set_state(state["pipeline_state"])
+        else:
+            self._init_pipeline()
 
         self._sparse_feature_names = state["sparse_feature_names"]
         self._dense_feature_names = state["dense_feature_names"]

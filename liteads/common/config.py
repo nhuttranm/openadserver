@@ -68,6 +68,7 @@ class AdServingSettings(BaseSettings):
     max_num_ads: int = 10
     timeout_ms: int = 50
     enable_ml_prediction: bool = True
+    model_path: str = ""  # Path to CTR model for prediction
 
 
 class FrequencySettings(BaseSettings):

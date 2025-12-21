@@ -271,22 +271,111 @@ python -m openadserver.trainer.evaluate \
 
 ## 📊 Benchmarks
 
-**Test Environment:** MacBook Pro M1, 8GB RAM
+### Stress Test Results (2 vCPU / 6GB Server)
 
-| Scenario | QPS | P50 | P99 | Notes |
-|----------|-----|-----|-----|-------|
-| Ad Request (no ML) | 2,500 | 2ms | 8ms | Baseline |
-| Ad Request (with LR) | 1,800 | 3ms | 12ms | Recommended |
-| Ad Request (with DeepFM) | 1,200 | 4ms | 15ms | Best accuracy |
-| Event Tracking | 5,000 | 1ms | 3ms | Async write |
+Full pipeline tested: **Retrieval → Filter → Prediction → Ranking → Rerank**
+
+| Model | QPS | Avg Latency | P95 | P99 | Relative |
+|-------|-----|-------------|-----|-----|----------|
+| **LR** | 189.7 | 5.24ms | 7.64ms | 10.02ms | 100% (baseline) |
+| **FM** | 166.1 | 5.99ms | 8.10ms | 11.54ms | 87.6% |
+| **DeepFM** | 151.2 | 6.58ms | 10.30ms | 14.13ms | 79.7% |
+
+### Pipeline Stage Breakdown
+
+```
+┌─────────────────┬───────────┬─────────────┐
+│     Stage       │  Avg (ms) │  % of Total │
+├─────────────────┼───────────┼─────────────┤
+│ Retrieval       │   0.97    │    18.5%    │
+│ Filter          │   0.20    │     3.8%    │
+│ Prediction (ML) │   3.63    │    69.3%    │  ← Bottleneck
+│ Ranking         │   0.35    │     6.7%    │
+│ Rerank          │   0.10    │     1.9%    │
+└─────────────────┴───────────┴─────────────┘
+```
+
+### Capacity Planning (1M DAU)
+
+| Model | Single Server QPS | Peak QPS Needed | Servers Required |
+|-------|-------------------|-----------------|------------------|
+| **LR** | 189.7 | 870 | **5** |
+| **FM** | 166.1 | 870 | **6** |
+| **DeepFM** | 151.2 | 870 | **6** |
+
+> Calculation: 1M DAU × 15 requests/user/day = 15M daily → 174 avg QPS → 870 peak (5x factor)
 
 ### Cloud Cost Estimates
 
-| Scale | Daily Requests | Setup | Monthly Cost |
-|-------|----------------|-------|--------------|
-| **Starter** | 1M | 1x 2vCPU 4GB | ~$40 |
-| **Growth** | 10M | 2x 4vCPU 8GB | ~$150 |
-| **Scale** | 100M | 4x 8vCPU 16GB + Redis Cluster | ~$600 |
+| Scale | DAU | Daily Requests | Servers (LR) | Monthly Cost |
+|-------|-----|----------------|--------------|--------------|
+| **Starter** | 100K | 1.5M | 1 | ~$30 |
+| **Growth** | 500K | 7.5M | 3 | ~$90 |
+| **Production** | 1M | 15M | 5 | ~$150 |
+| **Scale** | 5M | 75M | 25 | ~$750 |
+
+---
+
+## 🧪 Dataset & Model Training
+
+### Criteo Click Logs Dataset
+
+We use the [Criteo Display Advertising Challenge](https://www.kaggle.com/c/criteo-display-ad-challenge) dataset for CTR model training and evaluation.
+
+**Dataset Characteristics:**
+- **Size:** ~45GB (full), 100K samples used for benchmarks
+- **Features:** 13 integer features (I1-I13), 26 categorical features (C1-C26)
+- **Label:** Click (0/1)
+- **Positive Rate:** ~3.4%
+
+### Model Comparison (100K Criteo Samples)
+
+| Model | Test AUC | Train Time | Model Size | Inference Speed |
+|-------|----------|------------|------------|-----------------|
+| **LR** | 0.7577 | 2 min | 0.49 MB | 193,878/s |
+| **FM** | 0.7472 | 5 min | 4.34 MB | 170,640/s |
+| **DeepFM** | 0.7178 | 15 min | 8.77 MB | 60,483/s |
+
+> LR achieves highest AUC with fastest inference — recommended for production
+
+### Feature Engineering Pipeline
+
+```
+Raw Request                              Model Input
+    │                                         │
+    ▼                                         ▼
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│ User        │    │ Feature     │    │ Sparse      │
+│ - user_id   │───▶│ Hashing &   │───▶│ [26 dims]   │
+│ - age       │    │ Encoding    │    │             │
+│ - interests │    │             │    │ Dense       │
+├─────────────┤    │ Numba JIT   │    │ [13 dims]   │
+│ Ad          │    │ Accelerated │    └─────────────┘
+│ - camp_id   │    │             │           │
+│ - creative  │    └─────────────┘           ▼
+├─────────────┤                       ┌─────────────┐
+│ Context     │                       │ LR/FM/      │
+│ - device    │                       │ DeepFM      │
+│ - geo       │                       │ Prediction  │
+└─────────────┘                       └─────────────┘
+```
+
+### Run Your Own Stress Test
+
+```bash
+# Quick test (10 campaigns, 100 requests)
+python scripts/criteo/stress_test.py --campaigns 10 --requests 100 --model lr
+
+# Production simulation (200 campaigns, 10K requests, 20 concurrent)
+python scripts/criteo/stress_test.py \
+  --campaigns 200 \
+  --requests 10000 \
+  --concurrent 20 \
+  --model fm
+
+# Compare all models
+python scripts/criteo/compare_models.py
+```
 
 ---
 
